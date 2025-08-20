@@ -9,119 +9,115 @@ import { useUserContext } from '../../context/useUserContext'
 import uploadImage from '../../utils/uploadImage'
 import { toast } from 'react-toastify'
 
+interface Props { setCurrentPage: (p: string) => void }
 
-interface SignupProps {
-    setCurrentPage: (page: string) => void
-}
-const Signup: React.FC<SignupProps> = ({ setCurrentPage }) => {
-    const { updateUser } = useUserContext()
-    const [email, setEmail] = useState('')
-    const [fullName, setFullname] = useState('')
-    const [password, setPassword] = useState('')
-    const [error, setError] = useState<string | null>(null)
-    const [profilePic, setProfilePic] = useState<File | null>(null)
+const Signup: React.FC<Props> = ({ setCurrentPage }) => {
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [profilePic, setProfilePic] = useState<File | null>(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-    const navigate = useNavigate()
+  const { updateUser } = useUserContext()
+  const navigate = useNavigate()
 
-    const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!fullName) return setError('Name required')
+    if (!validateEmail(email)) return setError('Invalid email')
+    if (!password) return setError('Password required')
 
-        let profileImageUrl = ""
+    setLoading(true)
+    setError('')
+    toast.loading('Creating account…', { toastId: 'signup' })
 
-        if (!fullName) {
-            setError("please enter full name")
-            return;
-        }
-        if (!validateEmail(email)) {
-            setError("please enter a valid email")
-            return;
-        }
-        if (!password) {
-            setError("please enter a password")
-            return;
-        }
+    try {
+      let profileImgUrl = ''
+      if (profilePic) {
+        const { imageUrl } = await uploadImage(profilePic)
+        profileImgUrl = imageUrl || ''
+      }
 
-        try {
-            if (profilePic) {
-                const imgUploadRes = await uploadImage(profilePic);
-                profileImageUrl = imgUploadRes.imageUrl || ""
+      const { data } = await axiosInstance.post(API_PATHS.AUTH.REGISTER, {
+        name: fullName,
+        email,
+        password,
+        profileImgUrl
+      })
 
-            }
-            const response = await axiosInstance.post(API_PATHS.AUTH.REGISTER, {
-                name: fullName,
-                email,
-                password,
-                profileImgUrl: profileImageUrl
-            })
-            const { token } = response.data
-            if (token) {
-                localStorage.setItem("token", token)
-                updateUser(response.data)
-                navigate('/dashboard')
-            }
-
-            toast.success("account created")
-        } catch (error: any) {
-            if (error.response && error.response.data.message) {
-                setError(error.response.data.message)
-                toast.error(error)
-            }
-            else {
-                setError("something went wrong")
-                toast.error(error)
-
-            }
-        }
+      const { token } = data
+      if (token) {
+        localStorage.setItem('token', token)
+        updateUser(data)
+        toast.dismiss('signup')
+        toast.success('Account created!')
+        navigate('/dashboard', { replace: true })
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Signup failed'
+      setError(msg)
+      toast.update('signup', { render: msg, type: 'error', isLoading: false, autoClose: 3000 })
+    } finally {
+      setLoading(false)
     }
+  }
 
-    return (
-        <div className='w-[90vw] md:w-[33vw] p-7 flex flex-col justify-center'>
-            <h3 className='text-xl font-semibold text-black'>Create an Acount</h3>
-            <p className='text-sm text-slate-700 mt-[5px] mb-6'>Join us today, enter your details below.</p>
+  return (
+    <form onSubmit={handleSignUp} className="w-[90vw] md:w-[33vw] p-7 space-y-4">
+      <h2 className="text-xl font-bold">Create an Account</h2>
+      <p className="text-sm text-slate-600">Join us today—enter your details below.</p>
 
-            <form onSubmit={handleSignUp}>
+      <ProfilePhotoSelector image={profilePic} setImage={setProfilePic} />
 
-                <ProfilePhotoSelector
-                    image={profilePic}
-                    setImage={setProfilePic}
+      <Input
+        label="Full Name"
+        placeholder="Ada Lovelace"
+        value={fullName}
+        onChange={({ target }) => setFullName(target.value)}
+        required
+      />
+      <Input
+        label="Email"
+        type="email"
+        placeholder="ada@example.com"
+        autoComplete="email"
+        value={email}
+        onChange={({ target }) => setEmail(target.value)}
+        required
+      />
+      <Input
+        label="Password"
+        type="password"
+        placeholder="••••••••"
+        autoComplete="new-password"
+        value={password}
+        onChange={({ target }) => setPassword(target.value)}
+        required
+      />
 
-                />
-                <div className='flex flex-col'>
-                    <Input
-                        value={fullName}
-                        onChange={({ target }) => setFullname(target.value)}
-                        label='Full Name'
-                        placeholder='enter your name'
-                        type='text'
-                    />
-                    <Input
-                        value={email}
-                        onChange={({ target }) => setEmail(target.value)}
-                        label='Email'
-                        placeholder='enter your email'
-                        type='text'
-                    />
-                    <Input
-                        value={password}
-                        onChange={({ target }) => setPassword(target.value)}
-                        label='Password'
-                        placeholder='enter your password'
-                        type='password'
-                    />
+      {error && <p className="text-sm text-red-500">{error}</p>}
 
-                </div>
+      <button
+        type="submit"
+        disabled={loading}
+        className="btn-primary w-full disabled:opacity-50"
+      >
+        {loading ? 'Creating…' : 'Create Account'}
+      </button>
 
-                {error && <p className=''>{error}</p>}
-                <button className='btn-primary' type='submit'>Create Account </button>
-
-                <p className='text-sm text-slate-800 mt-3 '>Already an account? {" "}
-                    <button className='font-medium text-primary underline cursor-pointer text-blue-400'
-                        onClick={() => setCurrentPage("login")}
-                    >Login</button>
-                </p>
-            </form>
-        </div>
-    )
+      <p className="text-sm text-center">
+        Already have an account?{' '}
+        <button
+          type="button"
+          className="text-orange-500 font-semibold underline"
+          onClick={() => setCurrentPage('login')}
+        >
+          Login
+        </button>
+      </p>
+    </form>
+  )
 }
 
 export default Signup

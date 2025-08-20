@@ -1,77 +1,42 @@
-
 import ReactMarkDown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
-const AIResponsePreview = ({ content }: { content: string }) => {
-    return (
-        <div className='max-w-4xl mx-auto'>
-            <div className='text-md prose prose-slate dark:prose-invert max-w-none'>
-                <ReactMarkDown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                        p({ children }) {
-                            return <p className='mb-4 leading-5'>{children}</p>
-                        },
-                        strong({ children }) {
-                            return <strong>{children}</strong>
-                        },
-                        em({ children }) {
-                            return <em>{children}</em>
-                        },
-                        ul({ children }) {
-                            return <ul className='list-disc pl-6 space-y-2 my-4'>{children}</ul>
-                        },
-                        ol({ children }) {
-                            return <ol className='list-decimal pl-6 space-y-2 my-4'>{children}</ol>
-                        },
-                        li({ children }) {
-                            return <li className='mb-1'>{children}</li>
-                        },
-                        // blackquote({children}) {
-                        //     return <blackquote>{children}3</blackquote>
-                        // },
-                        h1({ children }) {
-                            return <h1 className='text-2xl font-bold mt-6 mb-4'>{children}</h1>
-                        },
-                        h2({ children }) {
-                            return <h2 className='text-xl font-bold mt-6 mb-3'>{children}</h2>
-                        },
-                        h3({ children }) {
-                            return <h3 className='text-lg font-bold mt-6 mb-2'>{children}</h3>
-                        },
-                        h4({ children }) {
-                            return <h4 className='text-md font-bold mt-6 mb-1'>{children}</h4>
-                        },
-                        a({ children }) {
-                            return <a>{children}</a>
-                        },
-                        table({ children }) {
-                            return <table>{children}</table>
-                        },
-                        thead({ children }) {
-                            return <thead>{children}</thead>
-                        },
-                        tbody({ children }) {
-                            return <tbody>{children}</tbody>
-                        },
-                        tr({ children }) {
-                            return <tr>{children}</tr>
-                        },
-                        th({ children }) {
-                            return <th>{children}</th>
-                        },
-                        img({ src, alt }) {
-                            return <img src={src} alt={alt}></img>
-                        },
-
-
-                    }}
-                >
-                    {content}
-                </ReactMarkDown>
-
-            </div></div>
-    )
-}
+const AIResponsePreview = ({ content }: { content: string }) => (
+  <div className="max-w-4xl mx-auto px-2">
+    <div className="prose prose-slate max-w-none">
+      <ReactMarkDown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children }) => <p className="mb-3 leading-relaxed">{children}</p>,
+          strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+          em: ({ children }) => <em className="italic">{children}</em>,
+          ul: ({ children }) => <ul className="list-disc pl-5 space-y-1 my-3">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1 my-3">{children}</ol>,
+          li: ({ children }) => <li className="mb-1">{children}</li>,
+          h1: ({ children }) => <h1 className="text-2xl font-bold mt-6 mb-2">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-xl font-bold mt-5 mb-2">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-lg font-bold mt-4 mb-1">{children}</h3>,
+          h4: ({ children }) => <h4 className="text-base font-bold mt-3 mb-1">{children}</h4>,
+          a: ({ children, href }) => (
+            <a href={href} className="text-blue-600 underline" target="_blank" rel="noreferrer">
+              {children}
+            </a>
+          ),
+          table: ({ children }) => (
+            <table className="w-full border-collapse border border-gray-300 my-4">{children}</table>
+          ),
+          thead: ({ children }) => <thead className="bg-gray-100">{children}</thead>,
+          tbody: ({ children }) => <tbody>{children}</tbody>,
+          tr: ({ children }) => <tr className="border-b border-gray-300">{children}</tr>,
+          th: ({ children }) => <th className="border border-gray-300 px-3 py-1 text-left">{children}</th>,
+          td: ({ children }) => <td className="border border-gray-300 px-3 py-1">{children}</td>,
+          img: ({ src, alt }) => <img src={src} alt={alt} className="rounded my-2" />
+        }}
+      >
+        {content}
+      </ReactMarkDown>
+    </div>
+  </div>
+)
 
 export default AIResponsePreview

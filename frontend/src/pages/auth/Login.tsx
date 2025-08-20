@@ -1,101 +1,106 @@
-import React, {  useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Input from '../../components/inputs/Input'
 import { validateEmail } from '../../utils/helper'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
 import { useUserContext } from '../../context/useUserContext'
-import {toast}  from 'react-toastify'
+import { toast } from 'react-toastify'
 
-
-interface LoginProps {
-    setCurrentPage: (page: string) => void
+interface Props {
+  setCurrentPage: (p: string) => void
 }
 
-const Login: React.FC<LoginProps> = ({ setCurrentPage }) => {
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
-    const [error, setError] = useState<string | null>(null)
+const Login: React.FC<Props> = ({ setCurrentPage }) => {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
-    
+  const { updateUser } = useUserContext()
+  const navigate = useNavigate()
 
-    const {updateUser} =useUserContext()
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!validateEmail(email)) return setError('Invalid email')
+    if (!password) return setError('Password required')
 
-    const navigate = useNavigate()
+    setError('')
+    setIsLoading(true)
+    const toastId = toast.loading('Logging in…')
 
-    const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault()
+    try {
+      const { data } = await axiosInstance.post(API_PATHS.AUTH.LOGIN, { email, password })
+      localStorage.setItem('token', data.token)
+      updateUser(data)
 
-        if(!validateEmail(email)){
-            setError("please enter a valid email")
-            return;
-        }
+      toast.update(toastId, {
+        render: 'Welcome back!',
+        type: 'success',
+        isLoading: false,
+        autoClose: 2000,
+      })
 
-        if(!password){
-            setError("please enter password")
-                return;
-            
-        }
-
-        try {
-            const response=await axiosInstance.post(API_PATHS.AUTH.LOGIN,{
-                email, password
-            })
-            // console.log(response)
-            const userData=response.data
-
-            const {token}=response.data
-
-            if(token){
-                localStorage.setItem("token",token)
-                updateUser(userData)
-                navigate("/dashboard")
-            }
-
-            toast.success("login successful")
-        } catch (error:any) {
-            if(error.response && error.response.data.message){
-                setError(error.response.data.message)
-                toast.error(error)
-            }
-            else {
-                setError("something went wrong")
-                toast.error(error)
-            }
-        }
+      navigate('/dashboard', { replace: true })
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Login failed'
+      toast.update(toastId, {
+        render: msg,
+        type: 'error',
+        isLoading: false,
+        autoClose: 3000,
+      })
+    } finally {
+      setIsLoading(false)
     }
-    return (
-        <div className='w-[90vw] md:w-[33vw] p-7 flex flex-col justify-center'>
+  }
 
-            <h3 className='text-xl font-semibold text-black'>Welcome Back</h3>
-            <p className='text-sm text-slate-700 mt-[5px] mb-6'>Please enter your details to log in </p>
-            <form onSubmit={handleLogin}>
-                <Input
-                value={email}
-                onChange={({target}) => setEmail(target.value)}
-                label="Email Address"
-                placeholder="enter your email"
-                type="text"
-                />
-                <Input
-                value={password}
-                onChange={({target}) => setPassword(target.value)}
-                label="Password"
-                placeholder="enter your password"
-                type="password"
-                />
+  return (
+    <form onSubmit={handleLogin} className="w-[90vw] md:w-[33vw] p-7 space-y-4">
+      <h2 className="text-xl font-bold">Welcome Back</h2>
+      <p className="text-sm text-slate-600">Enter your details to log in.</p>
 
-                {error && <p className='text-red-500 text-xs pb-2.5 '>{error}</p>}
+      <Input
+        label="Email"
+        type="email"
+        placeholder="you@example.com"
+        autoComplete="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+      />
+      <Input
+        label="Password"
+        type="password"
+        placeholder="••••••••"
+        autoComplete="current-password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        required
+      />
 
-                <button type='submit' className='btn-primary'>Login</button>
+      {error && <p className="text-sm text-red-500">{error}</p>}
 
-                <p className='text-sm text-slate-800 mt-3 '>
-                    Don't have an account? {" "}
-                    <button className='font-medium text-primary underline cursor-pointer text-blue-400' onClick={()=>setCurrentPage("signup")}>Sign Up</button>
-                </p> 
-            </form>
-        </div>
-    )
+      <button
+        type="submit"
+        disabled={isLoading}
+        className="btn-primary w-full flex items-center justify-center"
+      >
+        {isLoading ? 'Logging in…' : 'Login'}
+      </button>
+
+      <p className="text-sm text-center">
+        Don’t have an account?{' '}
+        <button
+          type="button"
+          className="text-orange-500 font-semibold underline"
+          onClick={() => setCurrentPage('signup')}
+        >
+          Sign Up
+        </button>
+      </p>
+    </form>
+  )
 }
 
 export default Login

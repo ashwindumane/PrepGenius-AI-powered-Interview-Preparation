@@ -1,65 +1,91 @@
-import { GoogleGenAI } from "@google/genai";
-import { conceptExplainPrompt, questionAnswerPrompt } from "../utils/prompt.js";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { questionAnswerPrompt, conceptExplainPrompt } from "../utils/prompt.js";
 
-const ai = new GoogleGenAI({ apiKey: " AIzaSyBG21g3kCjcpYxj7h405Pp8h-2RpabX7aU " });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+// ✅ Generate Interview Questions
 export const generateQuestion = async (req, res) => {
   try {
     const { role, experience, topicToFocus, numberOfQuestions } = req.body;
 
     if (!role || !experience || !topicToFocus || !numberOfQuestions) {
-      return res.status(500).json({ message: "one of the fields are missing" });
+      return res.status(400).json({ success: false, message: "Missing required fields" });
     }
 
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const prompt = questionAnswerPrompt(role, experience, topicToFocus, numberOfQuestions);
 
-    // const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const response = await model.generateContent(prompt);
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: prompt
-    })
+    // Extract AI text
+    const aiText = response?.response?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
+    if (!aiText) {
+      return res.status(500).json({ success: false, message: "Empty response from AI" });
+    }
 
+    let questions;
+    try {
+      // Try parsing JSON
+      questions = JSON.parse(aiText);
+    } catch (err) {
+      console.error("❌ Failed to parse AI response:", aiText);
+      return res.status(500).json({
+        success: false,
+        message: "AI returned invalid JSON",
+        raw: aiText // helpful for debugging
+      });
+    }
 
-    const rawText = response?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    console.log("Raw Gemini Response:", rawText);
-    const cleanedText = rawText.replace(/^```json\s*/, "").replace(/```$/, "").trim();
-    const data = JSON.parse(cleanedText);
-
-    return res.status(200).json({ success: true, data });
+    return res.status(200).json({ success: true, data: questions });
 
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ success: false, error: error });
+    console.error("🔥 Error in generateQuestion:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "AI request failed"
+    });
   }
 };
 
-
+// ✅ Generate Explanation
 export const generateExplanation = async (req, res) => {
   try {
     const { question } = req.body;
 
     if (!question) {
-      return res.status(404).json({ message: "missing required fields" });
+      return res.status(400).json({ success: false, message: "Question is required" });
     }
 
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const prompt = conceptExplainPrompt(question);
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: prompt
-    })
 
-    const rawText = response.text;
+    const response = await model.generateContent(prompt);
+    const aiText = response?.response?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
+    if (!aiText) {
+      return res.status(500).json({ success: false, message: "Empty response from AI" });
+    }
 
-    const cleanedText = rawText.replace(/^```json\s*/, "").replace(/```$/, "").trim();
-    const data = JSON.parse(cleanedText);
+    let explanation;
+    try {
+      explanation = JSON.parse(aiText);
+    } catch (err) {
+      console.error("❌ Failed to parse AI explanation:", aiText);
+      return res.status(500).json({
+        success: false,
+        message: "AI returned invalid JSON for explanation",
+        raw: aiText
+      });
+    }
 
-    return res.status(200).json(data);
+    return res.status(200).json({ success: true, data: explanation });
 
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ success: false, message: error.message });
+    console.error("🔥 Error in generateExplanation:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "AI request failed"
+    });
   }
 };
